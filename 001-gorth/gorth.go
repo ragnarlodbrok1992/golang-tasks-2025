@@ -56,12 +56,6 @@ func NewTokenParser(source_code_buffer []byte) func() (Token, string) { // Proba
 	return func() (Token, string) {
 		var token_buffer []byte
 
-		// // Right now returning source file bytes - characters
-		// cur_char := parser_buffer[current_index]
-		// current_index++
-		// // fmt.Println(cur_char)
-		// return cur_char 
-
 		for {
 			if current_index + 1 > len(parser_buffer) {
 				return TokenEOF, "EOF"
