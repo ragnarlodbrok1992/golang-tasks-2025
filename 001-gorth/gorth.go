@@ -70,6 +70,7 @@ func NewTokenParser(source_code_buffer []byte) func() (Token, string) { // Proba
 			cur_byte := parser_buffer[current_index];
 			// fmt.Println("cur_byte --> 0x", hex.EncodeToString([]byte{cur_byte}))
 
+			// What about multiple spaces? TODO: check if token_buffer is empty and do not return it
 			if cur_byte == ASCII_SPACE || cur_byte == ASCII_NEWLINE {
 				// fmt.Println("Encountered ASCII_SPACE or ASCII_NEWLINE!")
 				ret_buffer := token_buffer
