@@ -1,0 +1,19 @@
+; Comment goes here - compiler should ignore this (asm style)
+
+; In this language we are defining entry point
+main
+
+; We can push stuff on stack
+34 35
+
+; We call functions
+add ; This symbol should be defined somewhere
+
+; We provide some kind of interface (simple libc print for now)
+print
+
+; Application stops only if there are no data on data stack - all has been used/consumed in some way
+stop ; Stop mean we end our application
+
+add parameter_1 parameter_2 + ret ; Unknown word means we are binding values to those names in function
+; ret keyword will move the data from inside the function to caller, populating it's data-stack
