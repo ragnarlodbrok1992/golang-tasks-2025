@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	// "encoding/hex"
 	// "strings"
 )
@@ -26,8 +27,9 @@ const (
 	TokenMain Token = iota // Special token - entry function
 	TokenInt
 	TokenFunc
+	TokenFuncParam
 	TokenOp
-	TokenComment
+	TokenComment // TODO: do we even need a token for comment? maybe for some meta-tuning or some stuff like that
 	TokenEnd // Stop keyword
 	TokenEOF // Keep last
 )
@@ -36,15 +38,74 @@ const (
 	ParseControlNoMoreTokens ParseControl = -1
 )
 
-var asm_empty_program = `
+var asm_empty_program_start = `
 section .text
 global _start
 
 _start:
+`
+
+var asm_empty_program_end = `
 	mov rax, 60   ; syscall number for exit (60)
 	xor rdi, rdi  ; exit status 0
 	syscall
 `
+
+var asm_empty_program = asm_empty_program_start + asm_empty_program_end
+
+func (tkn Token) ToString() string {
+	switch tkn {
+		case TokenMain:
+			return "TokenMain"
+		case TokenInt:
+			return "TokenInt"
+		case TokenFunc:
+			return "TokenFunc"
+		case TokenOp:
+			return "TokenOp"
+		case TokenComment:
+			return "TokenComment"
+		case TokenEnd:
+			return "TokenEnd"
+		case TokenEOF:
+			return "TokenEOF"
+		default:
+			panic("Unknown token to string conversion...")
+	}
+}
+
+func canCastToInt(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+// TODO: evaluate token based on it's contents
+func EvaluateToken(str []byte) Token {
+	// fmt.Println("Passing token --> ", string(str))
+	tkn_str := string(str)
+	fmt.Printf("Passing token --> %sH\n", tkn_str)
+
+	if str[0] == ';' {
+		return TokenComment
+	}
+
+
+	switch tkn_str {
+	case "main":
+		return TokenMain
+	case "stop":
+		return TokenEnd
+	case "print": // TODO: Move this case to something more sophisticated, built-in function will land in some kind of hashmap
+		return TokenFunc
+	}
+
+	// Check if token - value can be cast to integer
+	if canCastToInt(tkn_str) {
+		return TokenInt
+	}
+
+	return TokenOp
+}
 
 // Creating a closure that will keep the source file data
 // and return tokens until it is empty
@@ -64,13 +125,38 @@ func NewTokenParser(source_code_buffer []byte) func() (Token, string) { // Proba
 			cur_byte := parser_buffer[current_index];
 			// fmt.Println("cur_byte --> 0x", hex.EncodeToString([]byte{cur_byte}))
 
+			// TODO: a lot of reused code can be factored out here
 			// What about multiple spaces? TODO: check if token_buffer is empty and do not return it
 			if cur_byte == ASCII_SPACE || cur_byte == ASCII_NEWLINE {
 				// fmt.Println("Encountered ASCII_SPACE or ASCII_NEWLINE!")
 				ret_buffer := token_buffer
 				token_buffer = token_buffer[:0] // Idk if this is how you clean the byte buffer
 				current_index++
-				return TokenOp, string(ret_buffer) // For now - it's getting quite complicated real fast
+
+				ret_token := EvaluateToken(ret_buffer)
+
+				if ret_token == TokenComment {
+					// We keep the ';'
+					token_buffer = append(token_buffer, ';')
+					token_buffer = append(token_buffer, ' ')
+
+					for {
+						cur_byte = parser_buffer[current_index];
+						if cur_byte == ASCII_NEWLINE {
+							ret_buffer = token_buffer;
+							token_buffer = token_buffer[:0]
+							current_index++
+
+							return ret_token, string(ret_buffer);
+						}
+
+						token_buffer = append(token_buffer, cur_byte)
+						current_index++
+					}
+				}
+
+				// TODO: there will be a special case for TokenComment...
+				return ret_token, string(ret_buffer) // For now - it's getting quite complicated real fast
 			} else {
 				token_buffer = append(token_buffer, cur_byte)
 				current_index++
@@ -128,7 +214,7 @@ func main() {
 							break
 						}
 						// Write out char of source file
-						fmt.Println(string(next_token), token_value)
+						fmt.Println(next_token.ToString(), token_value)
 					}
 
 					defer file.Close()
